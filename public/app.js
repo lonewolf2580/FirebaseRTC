@@ -68,11 +68,43 @@ async function createRoom() {
     peerConnection.addTrack(track, localStream);
   });
 
-  // Code for creating a room below
+  // Code for joining a room below
+  const offer = roomSnapshot.data().offer;
+  await peerConnection.setRemoteDescription(offer);
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
 
-  // Code for creating a room above
+  const roomWithAnswer = {
+      answer: {
+          type: answer.type,
+          sdp: answer.sdp
+      }
+  }
+  await roomRef.update(roomWithAnswer);
+  // Code for joining a room above
 
   // Code for collecting ICE candidates below
+
+  async function collectIceCandidates(roomRef, peerConnection,
+    localName, remoteName) {
+    const candidatesCollection = roomRef.collection(localName);
+
+    peerConnection.addEventListener('icecandidate', event => {
+      if (event.candidate) {
+        const json = event.candidate.toJSON();
+        candidatesCollection.add(json);
+      }
+    });
+
+      roomRef.collection(remoteName).onSnapshot(snapshot => {
+        snapshot.docChanges().forEach(change => {
+          if (change.type === "added") {
+            const candidate = new RTCIceCandidate(change.doc.data());
+            peerConneciton.addIceCandidate(candidate);
+          }
+        });
+      })
+    }
 
   // Code for collecting ICE candidates above
 
